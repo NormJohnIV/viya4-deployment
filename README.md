@@ -160,7 +160,7 @@ The Ansible playbook in viya4-deployment fully manages the kustomization.yaml fi
         ...           <- folders containing user defined customizations
 ```
 
-#### SAS Viya Platform Customizations
+#### SAS Viya Platform Customizations - Overview
 
 SAS Viya platform deployment customizations are automatically read in from folders under `/site-config`. To provide customizations, first create the folder structure detailed in the [Customize Deployment Overlays](#customize-deployment-overlays) section above. Then copy the desired overlays into a subfolder under `/site-config`. When you have completed these steps, you can run the viya4-deployment playbook. It will detect and add the overlays to the proper section of the kustomization.yaml file for the SAS Viya platform deployment.
 
@@ -183,6 +183,81 @@ For example:
  ```
 
 The SAS Viya platform customizations that are managed by viya4-deployment are located under the [templates](https://github.com/sassoftware/viya4-deployment/tree/main/roles/vdm/templates) directory. These are purposely templatized and included there since they contain a set of customizations that are common or required for a functioning SAS Viya platform deployment. These particular files are configured via exposed variables that are documented within [CONFIG-VARS.md](docs/CONFIG-VARS.md) and do not need to be manually placed under `/site-config`.
+
+#### SAS Viya Platform Customizations - Content priority
+
+After the creation of the folder containing your user defined customizations under the `/site-config` folder, you now have the option to order content within the entirety of the generated kustomization.yaml file created using DAC based on priority. This priority is set with the file name of the yaml being pulled into the `kustomization.yaml` file. For example, the following item would set an entry with the priority value of 75 set by the user in the generated `kustomization.yaml` file.
+
+```yaml
+./site-config/my-item/75-myexample.yaml
+```
+
+To show how items are added, this sample of a generated `kustomization.yaml` with the information and updated layout is provided.
+
+```yaml
+kind: Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+
+namespace: namespace 
+
+resources:
+- sas-bases/base # source: vdm, priority: 0
+- sas-bases/overlays/update-checker # source: vdm, priority: 10
+- sas-bases/overlays/cas-server # source: vdm, priority: 10
+- site-config/vdm/resources/openldap.yaml # source: vdm, priority: 10
+- sas-bases/overlays/network/networking.k8s.io # source: vdm, priority: 10
+- site-config/vdm/resources/openssl-generated-ingress-certificate.yaml # source: vdm, priority: 10
+- sas-bases/overlays/internal-elasticsearch # source: vdm, priority: 10
+- site-config/vdm/resources/sas-deployment-buildinfo.yaml # source: vdm, priority: 10
+- sas-bases/overlays/cas-server/auto-resources # source: vdm, priority: 40
+- site-config/example4 # source: user, priority: 50
+
+configurations:
+- site-config/example2/kustomizeconfig.yaml # source: user, priority: 50
+- sas-bases/overlays/required/kustomizeconfig.yaml # source: vdm, priority: 51
+
+transformers:
+- site-config/vdm/transformers/cas-auto-restart.yaml # source: vdm, priority: 10
+- site-config/vdm/transformers/openldap.yaml # source: vdm, priority: 10
+- site-config/vdm/transformers/postgres-storage-transformer.yaml # source: vdm, priority: 10
+- sas-bases/overlays/internal-elasticsearch/internal-elasticsearch-transformer.yaml # source: vdm, priority: 10
+- site-config/vdm/transformers/cas-add-nfs-mount.yaml # source: vdm, priority: 10
+- site-config/vdm/transformers/compute-server-add-nfs-mount.yaml # source: vdm, priority: 10
+- site-config/vdm/transformers/launcher-nfs-mount.yaml # source: vdm, priority: 10
+- site-config/vdm/transformers/sas-storageclass.yaml # source: vdm, priority: 49
+- sas-bases/overlays/internal-elasticsearch/sysctl-transformer.yaml # source: vdm, priority: 55
+- sas-bases/overlays/required/transformers.yaml # source: vdm, priority: 60
+- sas-bases/overlays/cas-server/auto-resources/remove-resources.yaml # source: vdm, priority: 90
+- site-config/example2/99-transformers.yaml # source: user, priority: 99
+
+generators:
+- site-config/example3/05-configmap.yaml # source: user, priority: 05
+- site-config/vdm/generators/sas-license.yaml # source: vdm, priority: 10
+- site-config/vdm/generators/sas-shared-config.yaml # source: vdm, priority: 10
+- site-config/vdm/generators/sas-consul-config-secret.yaml # source: vdm, priority: 10
+- site-config/vdm/generators/ingress-input.yaml # source: vdm, priority: 10
+- site-config/vdm/generators/sas-image-pull-secrets.yaml # source: vdm, priority: 10
+- site-config/vdm/generators/openldap-bootstrap-config.yaml # source: vdm, priority: 10
+- site-config/vdm/generators/customer-provided-merge-sas-certframe-configmap.yaml # source: vdm, priority: 10
+- site-config/example3/configmap.yaml # source: user, priority: 50
+- site-config/example3/60-configmap.yaml # source: user, priority: 60
+
+components:
+- site-config/example1 # source: user, priority: 50
+- sas-bases/components/security/core/base/full-stack-tls # source: vdm, priority: 51
+- sas-bases/components/security/network/networking.k8s.io/ingress/nginx.ingress.kubernetes.io/full-stack-tls # source: vdm, priority: 51
+```
+
+The updated kustomization.yaml file contains the content as previously generated with the DAC tooling; however it now has an added comment at the end of each line identifying the source of the line  [`user`, `vdm`] and priority [`Any 1-2 digit number between 1-99`].
+
+**NOTE**: A user's item can be placed anywhere in the generated file simply by adjusting its priority number.
+
+Ordering is determined by the following:
+
+- `sas-base/base` anchors the file with a priority of 0. Users cannot set a priority of 0 for any item.
+- VDM based items have a default priority value of 10
+- User based items have a default priority value of 50
+- All other entries are prioritized by the number proceeding their file name as shown in the example above.
 
 #### OpenLDAP Customizations
 
