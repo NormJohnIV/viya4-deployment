@@ -186,20 +186,23 @@ The SAS Viya platform customizations that are managed by viya4-deployment are lo
 
 #### SAS Viya Platform Customizations - Content priority
 
-After the creation of the folder containing your user defined customizations under the `/site-config` folder, you now have the option to order content within the entirety of the generated kustomization.yaml file created using DAC based on priority. This priority is set with the file name of the yaml being pulled into the `kustomization.yaml` file. For example, the following item would set an entry with the priority value of 75 set by the user in the generated `kustomization.yaml` file.
+After the creation of the folder containing your user defined customizations under the `/site-config` folder, you now have the option to order content within the entirety of the generated kustomization.yaml file based on the resource type and priority. The priority is set by adding a numeric prefix to the file in the form of `xx-`.
+
+##### Ordering is determined with the following criteria:
+
+- `sas-base/base` anchors the file with a priority of 0. Users cannot set a priority of 0 for any item.
+- VDM based items have a default priority value of 10 but can and are assigned other values as needed by the vdm process.
+- User based items have a default priority value of 50 but can be assigned their own priority based on the numeric prefix provided as stated above. Files without this prefix are treated as neutral and will be assigned the default priority.
+
+In the following example, if you want your file to have a priority value of 23 you would create the following file:
 
 ```yaml
-./site-config/my-item/75-myexample.yaml
+./site-config/my-product/23-myexample.yaml
 ```
 
-To show how items are added, this sample of a generated `kustomization.yaml` with the information and updated layout is provided.
+This would add the contents of the 23-myexample.yaml file into the correct section based on its manifest type and contant with a priority of 23. For this example `23-myexample.yaml` file is a resource file and is shown below in that section.
 
 ```yaml
-kind: Kustomization
-apiVersion: kustomize.config.k8s.io/v1beta1
-
-namespace: namespace 
-
 resources:
 - sas-bases/base # source: vdm, priority: 0
 - sas-bases/overlays/update-checker # source: vdm, priority: 10
@@ -209,55 +212,13 @@ resources:
 - site-config/vdm/resources/openssl-generated-ingress-certificate.yaml # source: vdm, priority: 10
 - sas-bases/overlays/internal-elasticsearch # source: vdm, priority: 10
 - site-config/vdm/resources/sas-deployment-buildinfo.yaml # source: vdm, priority: 10
+- site-config/my-product/23-myexample.yaml # source: user, priority: 23
 - sas-bases/overlays/cas-server/auto-resources # source: vdm, priority: 40
-- site-config/example4 # source: user, priority: 50
-
-configurations:
-- site-config/example2/kustomizeconfig.yaml # source: user, priority: 50
-- sas-bases/overlays/required/kustomizeconfig.yaml # source: vdm, priority: 51
-
-transformers:
-- site-config/vdm/transformers/cas-auto-restart.yaml # source: vdm, priority: 10
-- site-config/vdm/transformers/openldap.yaml # source: vdm, priority: 10
-- site-config/vdm/transformers/postgres-storage-transformer.yaml # source: vdm, priority: 10
-- sas-bases/overlays/internal-elasticsearch/internal-elasticsearch-transformer.yaml # source: vdm, priority: 10
-- site-config/vdm/transformers/cas-add-nfs-mount.yaml # source: vdm, priority: 10
-- site-config/vdm/transformers/compute-server-add-nfs-mount.yaml # source: vdm, priority: 10
-- site-config/vdm/transformers/launcher-nfs-mount.yaml # source: vdm, priority: 10
-- site-config/vdm/transformers/sas-storageclass.yaml # source: vdm, priority: 49
-- sas-bases/overlays/internal-elasticsearch/sysctl-transformer.yaml # source: vdm, priority: 55
-- sas-bases/overlays/required/transformers.yaml # source: vdm, priority: 60
-- sas-bases/overlays/cas-server/auto-resources/remove-resources.yaml # source: vdm, priority: 90
-- site-config/example2/99-transformers.yaml # source: user, priority: 99
-
-generators:
-- site-config/example3/05-configmap.yaml # source: user, priority: 05
-- site-config/vdm/generators/sas-license.yaml # source: vdm, priority: 10
-- site-config/vdm/generators/sas-shared-config.yaml # source: vdm, priority: 10
-- site-config/vdm/generators/sas-consul-config-secret.yaml # source: vdm, priority: 10
-- site-config/vdm/generators/ingress-input.yaml # source: vdm, priority: 10
-- site-config/vdm/generators/sas-image-pull-secrets.yaml # source: vdm, priority: 10
-- site-config/vdm/generators/openldap-bootstrap-config.yaml # source: vdm, priority: 10
-- site-config/vdm/generators/customer-provided-merge-sas-certframe-configmap.yaml # source: vdm, priority: 10
-- site-config/example3/configmap.yaml # source: user, priority: 50
-- site-config/example3/60-configmap.yaml # source: user, priority: 60
-
-components:
-- site-config/example1 # source: user, priority: 50
-- sas-bases/components/security/core/base/full-stack-tls # source: vdm, priority: 51
-- sas-bases/components/security/network/networking.k8s.io/ingress/nginx.ingress.kubernetes.io/full-stack-tls # source: vdm, priority: 51
 ```
 
 The updated kustomization.yaml file contains the content as previously generated with the DAC tooling; however it now has an added comment at the end of each line identifying the source of the line  [`user`, `vdm`] and priority [`Any 1-2 digit number between 1-99`].
 
 **NOTE**: A user's item can be placed anywhere in the generated file simply by adjusting its priority number.
-
-Ordering is determined by the following:
-
-- `sas-base/base` anchors the file with a priority of 0. Users cannot set a priority of 0 for any item.
-- VDM based items have a default priority value of 10
-- User based items have a default priority value of 50
-- All other entries are prioritized by the number proceeding their file name as shown in the example above.
 
 #### OpenLDAP Customizations
 
